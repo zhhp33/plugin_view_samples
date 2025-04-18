@@ -125,6 +125,51 @@ export default function () {
     });
   }
 
+  // 解析JSON字符串并提取 name/departmentName 字段，若为空数组则返回空字符串
+  function parseJsonAndGetName(value) {
+    if (
+      value === undefined ||
+      value === null ||
+      value === '' ||
+      value === 'undefined'
+    ) {
+      return '';
+    }
+    try {
+      // 兼容数组或对象
+      let parsedValue = value;
+      if (typeof value === 'string') {
+        parsedValue = JSON.parse(value);
+      }
+      if (Array.isArray(parsedValue)) {
+        if (parsedValue.length === 0) {
+          return '';
+        }
+        // 取第一个对象的 name/fullname/departmentName 字段
+        const item = parsedValue[0];
+        if (item && item.name) {
+          return item.name;
+        }
+        if (item && item.fullname) {
+          return item.fullname;
+        }
+        if (item && item.departmentName) {
+          return item.departmentName;
+        }
+      } else if (parsedValue && parsedValue.name) {
+        return parsedValue.name;
+      } else if (parsedValue && parsedValue.fullname) {
+        return parsedValue.fullname;
+      } else if (parsedValue && parsedValue.departmentName) {
+        return parsedValue.departmentName;
+      }
+    } catch (e) {
+      // 非 JSON 字符串直接返回空字符串
+      return '';
+    }
+    return '';
+  }
+
   const columns = showFields.concat(subField).map(id => {
     const control = _.find(controls, { controlId: id });
     if (control) {
@@ -147,10 +192,17 @@ export default function () {
                 if (row.isSub && row.key.includes('more') && subFieldcontrol.showControls.length <= index + 1) {
                   return (
                     <Flex justify="flex-end">
-                      <div className="view-more" onClick={() => handleLoadMoreRelationRows(row.key.replace('more-', ''))}>查看更多></div>
+                      <div className="view-more" onClick={() => handleLoadMoreRelationRows(row.key.replace('more-', ''))}>查看更多&gt;</div>
                     </Flex>
                   );
                 }
+                // 新增：如果 value 是空数组或 '[]'，直接返回空字符串
+                if (value === '[]' || (Array.isArray(value) && value.length === 0)) {
+                  return '';
+                }
+                // 优先显示 name 字段
+                const name = parseJsonAndGetName(value);
+                if (name) return name;
                 return <CellControls value={value} control={control} />;
               },
               onCell: (row) => {
@@ -175,6 +227,13 @@ export default function () {
           dataIndex: control.controlId,
           ...baseConfig,
           render: (value) => {
+            // 新增：如果 value 是空数组或 '[]'，直接返回空字符串
+            if (value === '[]' || (Array.isArray(value) && value.length === 0)) {
+              return '';
+            }
+            // 优先显示 name 字段
+            const name = parseJsonAndGetName(value);
+            if (name) return name;
             return <CellControls value={value} control={control} />;
           },
           onCell: (row, index) => {
